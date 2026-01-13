@@ -1,34 +1,42 @@
-import os
 import requests
 from datetime import datetime
 
-# OpenWeatherMap API 설정
-API_KEY = os.environ.get('OPENWEATHER_API_KEY')
+# 날씨 정보 설정 (API 키 불필요!)
 CITY = 'Seoul'
-COUNTRY = 'KR'
+LAT = 37.5665  # 서울 위도
+LON = 126.9780  # 서울 경도
 
-# 날씨 아이콘 매핑
+# 날씨 코드에 따른 아이콘 매핑
 WEATHER_ICONS = {
-    '01d': '☀️', '01n': '🌙',
-    '02d': '⛅', '02n': '☁️',
-    '03d': '☁️', '03n': '☁️',
-    '04d': '☁️', '04n': '☁️',
-    '09d': '🌧️', '09n': '🌧️',
-    '10d': '🌦️', '10n': '🌧️',
-    '11d': '⛈️', '11n': '⛈️',
-    '13d': '❄️', '13n': '❄️',
-    '50d': '🌫️', '50n': '🌫️'
+    0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+    45: '🌫️', 48: '🌫️',
+    51: '🌦️', 53: '🌦️', 55: '🌧️',
+    61: '🌧️', 63: '🌧️', 65: '🌧️',
+    71: '❄️', 73: '❄️', 75: '❄️',
+    80: '🌧️', 81: '🌧️', 82: '🌧️',
+    95: '⛈️', 96: '⛈️', 99: '⛈️'
+}
+
+# 날씨 코드 설명
+WEATHER_DESC = {
+    0: '맑음', 1: '대체로 맑음', 2: '부분 흐림', 3: '흐림',
+    45: '안개', 48: '안개',
+    51: '약한 이슬비', 53: '이슬비', 55: '강한 이슬비',
+    61: '약한 비', 63: '비', 65: '강한 비',
+    71: '약한 눈', 73: '눈', 75: '강한 눈',
+    80: '소나기', 81: '소나기', 82: '강한 소나기',
+    95: '뇌우', 96: '뇌우', 99: '강한 뇌우'
 }
 
 def get_weather():
-    """OpenWeatherMap API로 날씨 정보 가져오기"""
-    url = f'http://api.openweathermap.org/data/2.5/weather?q={CITY},{COUNTRY}&appid={API_KEY}&units=metric&lang=kr'
+    """Open-Meteo API로 날씨 정보 가져오기"""
+    url = f'https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia/Seoul'
     
     try:
         response = requests.get(url)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         print(f"날씨 정보 가져오기 실패: {e}")
         return None
 
@@ -37,14 +45,15 @@ def format_weather(data):
     if not data:
         return "날씨 정보를 가져올 수 없습니다."
     
-    temp = data['main']['temp']
-    feels_like = data['main']['feels_like']
-    description = data['weather'][0]['description']
-    icon_code = data['weather'][0]['icon']
-    humidity = data['main']['humidity']
-    wind_speed = data['wind']['speed']
+    current = data['current']
+    temp = current['temperature_2m']
+    feels_like = current['apparent_temperature']
+    humidity = current['relative_humidity_2m']
+    wind_speed = current['wind_speed_10m']
+    weather_code = current['weather_code']
     
-    icon = WEATHER_ICONS.get(icon_code, '🌡️')
+    icon = WEATHER_ICONS.get(weather_code, '🌡️')
+    description = WEATHER_DESC.get(weather_code, '정보 없음')
     
     now = datetime.now().strftime('%Y년 %m월 %d일 %H:%M')
     
@@ -52,10 +61,10 @@ def format_weather(data):
 
 **업데이트**: {now}
 
-- **현재 기온**: {temp:.1f}°C (체감 {feels_like:.1f}°C)
+- **현재 기온**: {temp}°C (체감 {feels_like}°C)
 - **날씨**: {description}
 - **습도**: {humidity}%
-- **풍속**: {wind_speed} m/s
+- **풍속**: {wind_speed} km/h
 """
     return weather_info
 
@@ -65,17 +74,14 @@ def update_readme(weather_info):
         with open('README.md', 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # 날씨 섹션 구분자
         start_marker = '<!-- WEATHER:START -->'
         end_marker = '<!-- WEATHER:END -->'
         
         if start_marker in content and end_marker in content:
-            # 기존 날씨 정보 교체
             before = content.split(start_marker)[0]
             after = content.split(end_marker)[1]
             new_content = f"{before}{start_marker}\n{weather_info}\n{end_marker}{after}"
         else:
-            # 날씨 섹션이 없으면 맨 위에 추가
             new_content = f"{start_marker}\n{weather_info}\n{end_marker}\n\n{content}"
         
         with open('README.md', 'w', encoding='utf-8') as f:
@@ -83,8 +89,6 @@ def update_readme(weather_info):
         
         print("README.md 업데이트 완료!")
         
-    except FileNotFoundError:
-        print("README.md 파일이 없습니다.")
     except Exception as e:
         print(f"README 업데이트 실패: {e}")
 
