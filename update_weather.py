@@ -6,6 +6,13 @@ from datetime import datetime
 API_KEY = os.environ.get('OPENWEATHER_API_KEY')
 LOCATION_NAME = '경기도 용인시 처인구 양지면'  # 표시할 지역명
 
+# API 키 확인
+if not API_KEY:
+    print("Error: OPENWEATHER_API_KEY가 설정되지 않았습니다.")
+    exit(1)
+
+print(f"API Key 확인: {API_KEY[:10]}... (길이: {len(API_KEY)})")
+
 # 날씨 아이콘 매핑
 WEATHER_ICONS = {
     '01d': '☀️', '01n': '🌙',
