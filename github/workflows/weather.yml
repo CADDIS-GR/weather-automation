@@ -2,9 +2,8 @@ name: Update Weather
 
 on:
   schedule:
-    # 매일 오전 7시 (한국시간 기준, UTC+9)
-    - cron: '0 22 * * *'  # UTC 22시 = 한국시간 오전 7시
-  workflow_dispatch:  # 수동 실행 가능
+    - cron: '0 22 * * *'
+  workflow_dispatch:
 
 jobs:
   update-weather:
