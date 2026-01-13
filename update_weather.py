@@ -2,9 +2,9 @@ import requests
 from datetime import datetime
 
 # 날씨 정보 설정 (API 키 불필요!)
-CITY = 'Seoul'
-LAT = 37.5665  # 서울 위도
-LON = 126.9780  # 서울 경도
+CITY = '경기도 용인시 처인구 양지면'
+LAT = 37.2567  # 양지면 위도
+LON = 127.2894  # 양지면 경도
 
 # 날씨 코드에 따른 아이콘 매핑
 WEATHER_ICONS = {
