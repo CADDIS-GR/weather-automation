@@ -4,8 +4,7 @@ from datetime import datetime
 
 # OpenWeatherMap API 설정
 API_KEY = os.environ.get('OPENWEATHER_API_KEY')
-CITY = 'Seoul'  # 원하는 도시로 변경 가능
-COUNTRY = 'KR'
+LOCATION_NAME = '경기도 용인시 처인구 양지면'  # 표시할 지역명
 
 # 날씨 아이콘 매핑
 WEATHER_ICONS = {
@@ -22,7 +21,11 @@ WEATHER_ICONS = {
 
 def get_weather():
     """OpenWeatherMap API로 날씨 정보 가져오기"""
-    url = f'http://api.openweathermap.org/data/2.5/weather?q={CITY},{COUNTRY}&appid={API_KEY}&units=metric&lang=kr'
+    # 경기도 용인시 처인구 양지면 좌표
+    lat = 37.2567  # 위도
+    lon = 127.2894  # 경도
+    
+    url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric&lang=kr'
     
     try:
         response = requests.get(url)
@@ -48,7 +51,7 @@ def format_weather(data):
     
     now = datetime.now().strftime('%Y년 %m월 %d일 %H:%M')
     
-    weather_info = f"""## {icon} 오늘의 날씨 ({CITY})
+    weather_info = f"""## {icon} 오늘의 날씨 ({LOCATION_NAME})
 
 **업데이트**: {now}
 
