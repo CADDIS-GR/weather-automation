@@ -9,32 +9,31 @@ import pytz
 KST = pytz.timezone('Asia/Seoul')
 today = datetime.now(KST)
 
-# 월요일이면 금요일 데이터 조회
 days_back = 3 if today.weekday() == 0 else 1
 target_date = today - timedelta(days=days_back)
 date_str = target_date.strftime('%Y-%m-%d')
 display_date = target_date.strftime('%Y년 %m월 %d일')
 
-stock_codes = os.environ['STOCK_CODES'].split(',')
+STOCK_NAMES = {
+    '277630': 'TIGER KOSPI',
+    '396500': 'TIGER Fn반도체TOP10',
+}
 
-# KRX 종목 리스트 (종목명 조회용)
-listing = fdr.StockListing('KRX')
+stock_codes = os.environ['STOCK_CODES'].split(',')
 
 rows = []
 for code in stock_codes:
     code = code.strip()
+    name = STOCK_NAMES.get(code, code)
     try:
         df = fdr.DataReader(code, date_str, date_str)
         if df.empty:
-            rows.append(f"<tr><td>{code}</td><td colspan='2' style='text-align:center; color:#999'>데이터 없음</td></tr>")
+            rows.append(f"<tr><td>{name} ({code})</td><td colspan='2' style='text-align:center; color:#999'>데이터 없음</td></tr>")
             continue
 
         row = df.iloc[-1]
         close = int(row['Close'])
         change_pct = round(float(row['Change']) * 100, 2)
-
-        name_match = listing[listing['Code'] == code]['Name'].values
-        name = name_match[0] if len(name_match) > 0 else code
 
         if change_pct > 0:
             color = '#e74c3c'
@@ -54,7 +53,7 @@ for code in stock_codes:
         </tr>""")
 
     except Exception as e:
-        rows.append(f"<tr><td>{code}</td><td colspan='2' style='color:red'>오류: {e}</td></tr>")
+        rows.append(f"<tr><td>{name} ({code})</td><td colspan='2' style='color:red'>오류: {e}</td></tr>")
 
 table_rows = '\n'.join(rows)
 
