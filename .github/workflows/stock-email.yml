@@ -1,0 +1,30 @@
+name: Daily Stock Email
+
+on:
+  schedule:
+    - cron: '0 22 * * 1-5'  # 평일 KST 07:00 (UTC 22:00)
+  workflow_dispatch:
+
+jobs:
+  send-stock-email:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install FinanceDataReader
+
+      - name: Send stock email
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          STOCK_CODES: ${{ secrets.STOCK_CODES }}
+        run: python send_stock_email.py
