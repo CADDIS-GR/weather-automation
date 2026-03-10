@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install financeDataReader
+        run: pip install finance-datareader
 
       - name: Send stock email
         env:
