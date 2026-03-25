@@ -38,8 +38,9 @@ jobs:
           last = rows[-1]
           prev = rows[-2] if len(rows) >= 2 else None
 
-          now = datetime.datetime.now()
-          month_str = last[0]
+          # 날짜 파싱 버그 수정
+          raw = str(last[0])
+          month_str = raw[:7] if 'T' in raw else raw
 
           # 카드별 행 생성
           card_rows = ""
