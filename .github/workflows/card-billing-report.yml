@@ -21,9 +21,9 @@ jobs:
           from email.mime.text import MIMEText
 
           SCRIPT_URL = "${{ secrets.CARD_SCRIPT_URL }}"
-          GMAIL_USER = "${{ secrets.GMAIL_USER }}"
-          GMAIL_PASS = "${{ secrets.GMAIL_APP_PASSWORD }}"
-          TO_EMAIL   = "${{ secrets.GMAIL_USER }}"
+          GMAIL_USER = "${{ secrets.SENDER_EMAIL }}"
+          GMAIL_PASS = "${{ secrets.SENDER_PASSWORD }}"
+          TO_EMAIL   = "${{ secrets.RECEIVER_EMAIL }}"
 
           # Sheets 데이터 가져오기
           with urllib.request.urlopen(SCRIPT_URL) as r:
