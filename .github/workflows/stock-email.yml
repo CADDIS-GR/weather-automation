@@ -2,7 +2,7 @@ name: Daily Stock Email
 
 on:
   schedule:
-    - cron: '0 22 * * 1-5'
+    - cron: '0 22 * * 1-5'  # 평일 KST 07:00 (UTC 22:00)
   workflow_dispatch:
 
 jobs:
@@ -23,8 +23,10 @@ jobs:
 
       - name: Send stock email
         env:
-          GMAIL_USER: ${{ secrets.SENDER_EMAIL }}
-          GMAIL_APP_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
-          EMAIL_TO: ${{ secrets.RECEIVER_EMAIL }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
           STOCK_CODES: ${{ secrets.STOCK_CODES }}
+          AVG_PRICE_277630: ${{ secrets.AVG_PRICE_277630 }}
+          AVG_PRICE_396500: ${{ secrets.AVG_PRICE_396500 }}
         run: python send_stock_email.py
