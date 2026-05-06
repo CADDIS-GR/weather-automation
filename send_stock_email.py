@@ -235,12 +235,12 @@ html = f"""
 # ─── 발송 ────────────────────────────────────────────────────────────────────
 msg = MIMEMultipart('alternative')
 msg['Subject'] = f'[브리핑] {display_date} ({weekday_kor}) 시장 요약'
-msg['From'] = os.environ['GMAIL_USER']
-msg['To'] = os.environ['EMAIL_TO']
+msg['From'] = os.environ['SENDER_EMAIL']
+msg['To'] = os.environ['RECEIVER_EMAIL']
 msg.attach(MIMEText(html, 'html'))
 
 with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-    server.login(os.environ['GMAIL_USER'], os.environ['GMAIL_APP_PASSWORD'])
-    server.sendmail(os.environ['GMAIL_USER'], os.environ['EMAIL_TO'], msg.as_string())
+    server.login(os.environ['SENDER_EMAIL'], os.environ['SENDER_PASSWORD'])
+    server.sendmail(os.environ['SENDER_EMAIL'], os.environ['RECEIVER_EMAIL'], msg.as_string())
 
 print(f"✅ 브리핑 이메일 발송 완료 ({display_date})")
