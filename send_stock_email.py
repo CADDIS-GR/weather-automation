@@ -83,8 +83,8 @@ for code in stock_codes:
 # ─── 2. 미국 시장 (나스닥 / S&P500 / SOX) ───────────────────────────────────
 us_symbols = {
     'IXIC': '나스닥 종합',
-    'SP500': 'S&P 500',
-    'SOX': '필라델피아 반도체 (SOX)',
+    '^GSPC': 'S&P 500',
+    '^SOX': '필라델피아 반도체 (SOX)',
 }
 
 us_target = target_date - timedelta(days=1)  # 한국 전일 = 미국 전전날 장
