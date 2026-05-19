@@ -22,10 +22,12 @@ weekday_kor = ['월', '화', '수', '목', '금', '토', '일'][target_date.week
 avg_prices = {
     '277630': float(os.environ.get('AVG_PRICE_277630', '50269')),
     '396500': float(os.environ.get('AVG_PRICE_396500', '31625')),
+    '010140': float(os.environ.get('AVG_PRICE_010140', '28000')),
+    '494670': float(os.environ.get('AVG_PRICE_494670', '28500')),
 }
 
 # ─── 1. 한국 ETF 조회 ────────────────────────────────────────────────────────
-stock_codes_env = os.environ.get('STOCK_CODES', '277630,396500')
+stock_codes_env = os.environ.get('STOCK_CODES', '277630,396500,010140,494670')
 stock_codes = [s.strip() for s in stock_codes_env.split(',')]
 
 kr_rows_html = ''
@@ -64,6 +66,8 @@ for code in stock_codes:
         name_map = {
             '277630': 'TIGER KOSPI',
             '396500': 'TIGER Fn반도체TOP10',
+            '010140': '삼성중공업',
+            '494670': 'TIGER 조선TOP10',
         }
         name = name_map.get(code, code)
 
@@ -83,8 +87,8 @@ for code in stock_codes:
 # ─── 2. 미국 시장 (나스닥 / S&P500 / SOX) ───────────────────────────────────
 us_symbols = {
     'IXIC': '나스닥 종합',
-    '^GSPC': 'S&P 500',
-    '^SOX': '필라델피아 반도체 (SOX)',
+    'SP500': 'S&P 500',
+    'SOX': '필라델피아 반도체 (SOX)',
 }
 
 us_target = target_date - timedelta(days=1)  # 한국 전일 = 미국 전전날 장
