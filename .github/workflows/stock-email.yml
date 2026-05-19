@@ -29,4 +29,6 @@ jobs:
           STOCK_CODES: ${{ secrets.STOCK_CODES }}
           AVG_PRICE_277630: ${{ secrets.AVG_PRICE_277630 }}
           AVG_PRICE_396500: ${{ secrets.AVG_PRICE_396500 }}
+          AVG_PRICE_010140: ${{ secrets.AVG_PRICE_010140 }}
+          AVG_PRICE_494670: ${{ secrets.AVG_PRICE_494670 }}
         run: python send_stock_email.py
