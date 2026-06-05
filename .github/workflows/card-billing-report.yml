@@ -38,23 +38,32 @@ jobs:
           last = rows[-1]
           prev = rows[-2] if len(rows) >= 2 else None
 
-          # 날짜 파싱 버그 수정
+          # 날짜 파싱
           raw = str(last[0])
           month_str = raw[:7] if 'T' in raw else raw
 
           # 카드별 행 생성
+          # 카드 10개: 인덱스 1~10, 합계: 인덱스 11, 입력일시: 인덱스 12
           card_rows = ""
           COLORS = {
-            '케이뱅크':'#3b82f6','BC바로카드':'#ec4899','KB카드':'#f59e0b',
-            '롯데카드':'#ef4444','우리카드':'#10b981','삼성카드':'#6366f1',
-            '카카오뱅크':'#eab308','현대카드':'#374151','신한카드':'#f97316'
+            '케이뱅크':   '#3b82f6',
+            'KB카드':     '#f59e0b',
+            '우리카드':   '#10b981',
+            '삼성카드':   '#6366f1',
+            '카카오뱅크': '#eab308',
+            '현대카드':   '#374151',
+            '신한카드':   '#f97316',
+            '롯데카드S':  '#ef4444',
+            '우리카드S':  '#059669',
+            '농협카드S':  '#16a34a',
           }
-          total_last = int(last[10]) if last[10] else 0
-          total_prev = int(prev[10]) if prev and prev[10] else 0
+
+          total_last = int(last[11]) if last[11] else 0
+          total_prev = int(prev[11]) if prev and prev[11] else 0
           diff_total = total_last - total_prev
           diff_pct   = (diff_total / total_prev * 100) if total_prev else 0
 
-          for idx, name in enumerate(headers[1:10], 1):
+          for idx, name in enumerate(headers[1:11], 1):
               val  = int(last[idx])  if last[idx]  else 0
               pval = int(prev[idx])  if prev and prev[idx] else 0
               diff = val - pval
