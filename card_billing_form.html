@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>카드 청구액</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #f4f5f8;
+    color: #1a1a2e;
+    min-height: 100vh;
+    padding: 2.5rem 1rem 4rem;
+  }
+  .wrap { max-width: 600px; margin: 0 auto; }
+
+  /* 헤더 */
+  .page-header { margin-bottom: 2rem; }
+  .page-header h1 {
+    font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+    color: #1a1a2e; margin-bottom: 4px;
+  }
+  .page-header p { font-size: 13px; color: #888; }
+
+  /* 연월 바 */
+  .month-bar {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 1.5px solid #e8e8f0;
+    border-radius: 14px; padding: 14px 20px; margin-bottom: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  .month-bar label { font-size: 13px; color: #888; white-space: nowrap; }
+  .month-bar input {
+    font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500;
+    color: #1a1a2e; background: transparent; border: none; outline: none;
+  }
+  .month-total-mini {
+    margin-left: auto; font-family: 'DM Mono', monospace;
+    font-size: 15px; font-weight: 500; color: #5c5ce0;
+  }
+
+  /* 섹션 레이블 */
+  .section-label {
+    font-size: 11px; font-weight: 700; color: #aaa;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin: 1.5rem 0 0.7rem; padding-left: 4px;
+  }
+
+  /* 카드 row */
+  .card-row {
+    background: #fff;
+    border: 1.5px solid #eee;
+    border-top: 4px solid var(--card-color, #ddd);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    transition: box-shadow 0.15s, transform 0.15s;
+    animation: fadeUp 0.3s ease both;
+  }
+  .card-row:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.09); transform: translateY(-1px); }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+
+  .card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .card-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--card-color); display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 700;
+    color: #fff; flex-shrink: 0; opacity: 0.9;
+  }
+  .card-name { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+  .card-badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px;
+    background: #f0f0f8; color: #888;
+  }
+  .loan-badge { background: #fff8e6; color: #d4900a; }
+  .card-due { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 11px; color: #bbb; }
+
+  .card-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-label { font-size: 11px; color: #aaa; margin-bottom: 5px; font-weight: 500; letter-spacing: 0.03em; }
+  .amount-wrap { position: relative; }
+  .amount-prefix {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    font-family: 'DM Mono', monospace; font-size: 13px; color: #bbb; pointer-events: none;
+  }
+  .amount-wrap input { padding-left: 24px; }
+  .field-input {
+    width: 100%; font-family: 'DM Mono', monospace;
+    font-size: 14px; font-weight: 500; color: #1a1a2e;
+    background: #f8f8fc; border: 1.5px solid #eee;
+    border-radius: 9px; padding: 8px 10px; outline: none;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+  .field-input:focus {
+    border-color: var(--card-color, #5c5ce0);
+    background: #fff;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--card-color, #5c5ce0) 12%, transparent);
+  }
+  .field-input[readonly] { color: #bbb; font-size: 12px; cursor: default; background: #fafafa; }
+  .changed .amount-wrap .field-input {
+    border-color: var(--card-color) !important;
+    background: #fff !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--card-color) 12%, transparent) !important;
+  }
+  .prev-hint { font-size: 10px; color: #ccc; margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+  /* 합계 패널 */
+  .summary-panel {
+    background: #fff; border: 1.5px solid #e8e8f0;
+    border-radius: 16px; padding: 20px; margin: 1.5rem 0 1rem;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+  }
+  .summary-title {
+    font-size: 11px; font-weight: 700; color: #aaa;
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px;
+  }
+  .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; margin-bottom: 16px; }
+  .sum-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; border-bottom: 1px solid #f0f0f8;
+  }
+  .sum-name { font-size: 12px; font-weight: 500; }
+  .sum-val { font-family: 'DM Mono', monospace; font-size: 12px; color: #888; }
+  .sum-val.changed { color: #5c5ce0; font-weight: 500; }
+  .sum-divider { border: none; border-top: 1.5px solid #eee; margin: 0 0 16px; }
+  .sum-total-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .sum-total-label { font-size: 13px; color: #888; }
+  .sum-total-val {
+    font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500;
+    color: #1a1a2e;
+  }
+
+  /* 저장 버튼 */
+  .btn-save {
+    width: 100%; padding: 15px;
+    font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 700;
+    color: #fff; background: #5c5ce0;
+    border: none; border-radius: 14px; cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 4px 18px rgba(92,92,224,0.35);
+    letter-spacing: 0.02em;
+  }
+  .btn-save:hover { background: #4a4acc; box-shadow: 0 6px 24px rgba(92,92,224,0.45); }
+  .btn-save:active { transform: scale(0.98); }
+  .btn-save:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+  .status-msg { text-align: center; font-size: 13px; margin-top: 10px; min-height: 20px; }
+  .status-msg.ok { color: #22c55e; }
+  .status-msg.err { color: #ef4444; }
+  .status-msg.loading { color: #aaa; }
+
+  @media (max-width: 480px) {
+    .card-bottom { grid-template-columns: 1fr; }
+    .sum-grid { grid-template-columns: 1fr; }
+    body { padding: 1.5rem 0.75rem 3rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-header">
+    <h1>카드 청구액 📋</h1>
+    <p>매월 청구서 확인 후 입력 · Google Sheets 자동 저장</p>
+  </div>
+
+  <div class="month-bar">
+    <label>청구 연월</label>
+    <input type="month" id="month-sel" />
+    <span class="month-total-mini" id="month-total-mini">₩0</span>
+  </div>
+
+  <div class="section-label">대출금</div>
+  <div id="loans-container"></div>
+
+  <div class="section-label">카드결제</div>
+  <div id="cards-container"></div>
+
+  <div class="summary-panel">
+    <div class="summary-title">이번달 합계</div>
+    <div class="sum-grid" id="sum-grid"></div>
+    <hr class="sum-divider">
+    <div class="sum-total-row">
+      <span class="sum-total-label">총 청구액</span>
+      <span class="sum-total-val" id="sum-total">₩0</span>
+    </div>
+  </div>
+
+  <button class="btn-save" id="save-btn" onclick="handleSave()">Sheets에 저장</button>
+  <div class="status-msg" id="status"></div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwNn01I5B5XTFyjk_BjRao3nctRmfFNWG7vbuRK9wXxGDl0Y6xvMx6wt0L8tAlp-9p1lw/exec';
+
+const CARDS = [
+  { name: '케이뱅크',   type: '대출금',   due: 9,  prev: 330753,  account: '케이뱅크 100171510009',   color: '#3b82f6', icon: 'K' },
+  { name: 'KB카드',     type: '카드결제', due: 17, prev: 780000,  account: '국민 741210154838',        color: '#f59e0b', icon: 'KB' },
+  { name: '우리카드',   type: '카드결제', due: 16, prev: 613000,  account: '우리 1002737417902',       color: '#10b981', icon: '우' },
+  { name: '삼성카드',   type: '카드결제', due: 18, prev: 369000,  account: '국민 00310204235456',      color: '#6366f1', icon: 'S' },
+  { name: '카카오뱅크', type: '대출금',   due: 20, prev: 579270,  account: '카카오뱅크 3333013660471', color: '#eab308', icon: '카' },
+  { name: '현대카드',   type: '카드결제', due: 25, prev: 892000,  account: '기업은행 01027560184',     color: '#374151', icon: 'H' },
+  { name: '신한카드',   type: '카드결제', due: 27, prev: 286600,  account: '신한 110497768890',        color: '#f97316', icon: '신' },
+  { name: '롯데카드S',  type: '카드결제', due: 15, prev: 0,       account: '',                         color: '#ef4444', icon: 'L' },
+  { name: '우리카드S',  type: '카드결제', due: 15, prev: 0,       account: '',                         color: '#059669', icon: '우S' },
+  { name: '농협카드S',  type: '카드결제', due: 15, prev: 0,       account: '',                         color: '#16a34a', icon: '농' },
+];
+
+const now = new Date();
+document.getElementById('month-sel').value =
+  `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+function buildCard(c, i) {
+  const div = document.createElement('div');
+  div.className = 'card-row';
+  div.id = `row-${i}`;
+  div.style.setProperty('--card-color', c.color);
+  div.style.animationDelay = `${i * 0.05}s`;
+  div.innerHTML = `
+    <div class="card-top">
+      <div class="card-icon">${c.icon}</div>
+      <span class="card-name">${c.name}</span>
+      <span class="card-badge${c.type==='대출금'?' loan-badge':''}">${c.type}</span>
+      <span class="card-due">매월 ${c.due}일</span>
+    </div>
+    <div class="card-bottom">
+      <div id="field-${i}">
+        <div class="field-label">청구액</div>
+        <div class="amount-wrap">
+          <span class="amount-prefix">₩</span>
+          <input class="field-input" type="number" id="amt-${i}"
+            value="${c.prev}" min="0" step="1000"
+            oninput="onChange(${i},${c.prev})" />
+        </div>
+        <div class="prev-hint">전달 ₩${c.prev.toLocaleString('ko-KR')}</div>
+      </div>
+      <div>
+        <div class="field-label">결제계좌</div>
+        <input class="field-input" type="text" value="${c.account}" readonly />
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+const loansContainer = document.getElementById('loans-container');
+const cardsContainer = document.getElementById('cards-container');
+CARDS.forEach((c, i) => {
+  (c.type === '대출금' ? loansContainer : cardsContainer).appendChild(buildCard(c, i));
+});
+
+function onChange(i, prev) {
+  const val = parseInt(document.getElementById(`amt-${i}`).value) || 0;
+  document.getElementById(`field-${i}`).classList.toggle('changed', val !== prev);
+  updateSummary();
+}
+
+function fmt(n) { return '₩' + Math.round(n).toLocaleString('ko-KR'); }
+
+function updateSummary() {
+  let total = 0, html = '';
+  CARDS.forEach((c, i) => {
+    const val = parseInt(document.getElementById(`amt-${i}`).value) || 0;
+    total += val;
+    const changed = val !== c.prev;
+    html += `<div class="sum-item">
+      <span class="sum-name" style="color:${c.color}">${c.name}</span>
+      <span class="sum-val${changed?' changed':''}">${fmt(val)}</span>
+    </div>`;
+  });
+  document.getElementById('sum-grid').innerHTML = html;
+  document.getElementById('sum-total').textContent = fmt(total);
+  document.getElementById('month-total-mini').textContent = fmt(total);
+}
+
+updateSummary();
+
+async function handleSave() {
+  const month = document.getElementById('month-sel').value;
+  if (!month) { setStatus('연월을 선택해주세요.', 'err'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = '저장 중...';
+
+  const params = new URLSearchParams({ action: 'save', month });
+  let total = 0;
+  CARDS.forEach((c, i) => {
+    const val = parseInt(document.getElementById(`amt-${i}`).value) || 0;
+    total += val;
+    params.append(c.name.replace(/\s/g, ''), val);
+  });
+  params.append('합계', total);
+
+  try {
+    const res = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const json = await res.json();
+    if (json.status === 'ok') {
+      setStatus(`✓ ${month} 저장 완료! Sheets에서 확인하세요.`, 'ok');
+      btn.textContent = '✓ 저장됨';
+      setTimeout(() => { btn.textContent = 'Sheets에 저장'; btn.disabled = false; }, 3000);
+    } else {
+      setStatus('오류: ' + json.message, 'err');
+      btn.textContent = 'Sheets에 저장'; btn.disabled = false;
+    }
+  } catch(err) {
+    setStatus('저장 실패 — ' + err.message, 'err');
+    btn.textContent = 'Sheets에 저장'; btn.disabled = false;
+  }
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg; el.className = 'status-msg ' + type;
+}
+</script>
+</body>
+</html>
