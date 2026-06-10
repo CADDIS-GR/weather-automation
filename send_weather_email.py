@@ -1,153 +1,187 @@
 import requests
-from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta
+import pytz
 import os
 
-# 날씨 정보 설정
-LOCATION_NAME = '경기도 용인시 처인구 양지면'
-LAT = 37.2567
-LON = 127.2894
+# ── 이메일 설정 ──────────────────────────────────────────
+SENDER_EMAIL    = os.environ['SENDER_EMAIL']
+SENDER_PASSWORD = os.environ['SENDER_PASSWORD']
+RECEIVER_EMAIL  = os.environ['RECEIVER_EMAIL']
 
-# 이메일 설정
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL')  # 보내는 이메일
-SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD')  # 앱 비밀번호
-RECEIVER_EMAIL = os.environ.get('RECEIVER_EMAIL')  # 받는 이메일
+# ── 지점 설정 ────────────────────────────────────────────
+LOCATIONS = [
+    {
+        "name":  "경기도 용인시 처인구 양지면",
+        "label": "🎣 낚시터 (양지면)",
+        "lat":   37.2567,
+        "lon":   127.2894,
+    },
+    {
+        "name":  "경기도 화성시 우정읍",
+        "label": "🏢 직장 (우정읍)",
+        "lat":   37.1289466,
+        "lon":   126.8007403,
+    },
+]
 
-# 날씨 코드 매핑
-WEATHER_ICONS = {
-    0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
-    45: '🌫️', 48: '🌫️',
-    51: '🌦️', 53: '🌦️', 55: '🌧️',
-    61: '🌧️', 63: '🌧️', 65: '🌧️',
-    71: '❄️', 73: '❄️', 75: '❄️',
-    80: '🌧️', 81: '🌧️', 82: '🌧️',
-    95: '⛈️', 96: '⛈️', 99: '⛈️'
-}
+KST = pytz.timezone('Asia/Seoul')
 
-WEATHER_DESC = {
-    0: '맑음', 1: '대체로 맑음', 2: '부분 흐림', 3: '흐림',
-    45: '안개', 48: '안개',
-    51: '약한 이슬비', 53: '이슬비', 55: '강한 이슬비',
-    61: '약한 비', 63: '비', 65: '강한 비',
-    71: '약한 눈', 73: '눈', 75: '강한 눈',
-    80: '소나기', 81: '소나기', 82: '강한 소나기',
-    95: '뇌우', 96: '뇌우', 99: '강한 뇌우'
-}
+# ── WMO 날씨 코드 변환 ────────────────────────────────────
+def wmo_to_description(code):
+    mapping = {
+        0: ("맑음", "☀️"), 1: ("대체로 맑음", "🌤️"), 2: ("부분 흐림", "⛅"),
+        3: ("흐림", "☁️"), 45: ("안개", "🌫️"), 48: ("안개", "🌫️"),
+        51: ("이슬비", "🌦️"), 53: ("이슬비", "🌦️"), 55: ("이슬비", "🌦️"),
+        61: ("비", "🌧️"), 63: ("비", "🌧️"), 65: ("강한 비", "🌧️"),
+        71: ("눈", "❄️"), 73: ("눈", "❄️"), 75: ("강한 눈", "❄️"),
+        77: ("싸락눈", "🌨️"), 80: ("소나기", "🌦️"), 81: ("소나기", "🌦️"),
+        82: ("강한 소나기", "⛈️"), 85: ("눈소나기", "🌨️"), 86: ("눈소나기", "🌨️"),
+        95: ("뇌우", "⛈️"), 96: ("뇌우+우박", "⛈️"), 99: ("뇌우+우박", "⛈️"),
+    }
+    return mapping.get(code, ("알 수 없음", "❓"))
 
-def get_weather_forecast():
-    """3일간 날씨 예보 가져오기"""
-    url = f'https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Asia/Seoul&forecast_days=3'
-    
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"날씨 정보 가져오기 실패: {e}")
-        return None
+# ── Open-Meteo API 호출 ───────────────────────────────────
+def fetch_weather(lat, lon):
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude":  lat,
+        "longitude": lon,
+        "daily": [
+            "weathercode", "temperature_2m_max", "temperature_2m_min",
+            "precipitation_probability_max", "windspeed_10m_max",
+        ],
+        "current_weather": True,
+        "timezone": "Asia/Seoul",
+        "forecast_days": 3,
+    }
+    r = requests.get(url, params=params, timeout=10)
+    r.raise_for_status()
+    return r.json()
 
-def format_email_content(data):
-    """이메일 본문 HTML 생성"""
-    if not data:
-        return "<p>날씨 정보를 가져올 수 없습니다.</p>"
-    
-    daily = data['daily']
-    dates = daily['time']
-    
-    html_content = f"""
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
-            .container {{ background-color: white; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto; }}
-            h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }}
-            .day-card {{ background-color: #ecf0f1; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 5px solid #3498db; }}
-            .day-title {{ font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }}
-            .weather-info {{ margin: 5px 0; font-size: 16px; }}
-            .icon {{ font-size: 40px; }}
-            .footer {{ margin-top: 30px; text-align: center; color: #7f8c8d; font-size: 12px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🌤️ {LOCATION_NAME} 날씨 예보</h1>
-            <p style="color: #7f8c8d;">업데이트: {datetime.now().strftime('%Y년 %m월 %d일 %H:%M')}</p>
-    """
-    
-    day_names = ['오늘', '내일', '모레']
-    
+# ── 지점별 HTML 카드 생성 ─────────────────────────────────
+def build_location_card(loc):
+    data    = fetch_weather(loc["lat"], loc["lon"])
+    daily   = data["daily"]
+    current = data["current_weather"]
+
+    cur_desc, cur_icon = wmo_to_description(current["weathercode"])
+
+    # 날짜별 카드
+    day_cards = ""
+    today = datetime.now(KST).date()
+    day_labels = ["오늘", "내일", "모레"]
+
     for i in range(3):
-        date = datetime.strptime(dates[i], '%Y-%m-%d')
-        day_name = day_names[i]
-        date_str = date.strftime('%m월 %d일 (%a)')
-        
-        weather_code = daily['weather_code'][i]
-        temp_max = daily['temperature_2m_max'][i]
-        temp_min = daily['temperature_2m_min'][i]
-        precip_prob = daily['precipitation_probability_max'][i]
-        wind_speed = daily['wind_speed_10m_max'][i]
-        
-        icon = WEATHER_ICONS.get(weather_code, '🌡️')
-        description = WEATHER_DESC.get(weather_code, '정보 없음')
-        
-        html_content += f"""
-            <div class="day-card">
-                <div class="day-title">
-                    <span class="icon">{icon}</span> {day_name} ({date_str})
-                </div>
-                <div class="weather-info">☀️ <strong>날씨:</strong> {description}</div>
-                <div class="weather-info">🌡️ <strong>기온:</strong> 최저 {temp_min}°C / 최고 {temp_max}°C</div>
-                <div class="weather-info">💧 <strong>강수확률:</strong> {precip_prob}%</div>
-                <div class="weather-info">💨 <strong>최대풍속:</strong> {wind_speed} km/h</div>
-            </div>
-        """
-    
-    html_content += """
-            <div class="footer">
-                <p>이 메일은 GitHub Actions에서 자동으로 발송되었습니다.</p>
-                <p>Open-Meteo API를 사용하여 날씨 정보를 제공합니다.</p>
-            </div>
+        date_str = daily["time"][i]
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        label    = day_labels[i]
+        weekday  = ["월","화","수","목","금","토","일"][date_obj.weekday()]
+        desc, icon = wmo_to_description(daily["weathercode"][i])
+        t_max  = daily["temperature_2m_max"][i]
+        t_min  = daily["temperature_2m_min"][i]
+        precip = daily["precipitation_probability_max"][i]
+        wind   = daily["windspeed_10m_max"][i]
+
+        bg = "#e8f4fd" if i == 0 else "#f9f9f9"
+        border = "2px solid #3498db" if i == 0 else "1px solid #e0e0e0"
+
+        day_cards += f"""
+        <div style="background:{bg};border:{border};border-radius:12px;
+                    padding:16px;text-align:center;min-width:140px;">
+          <div style="font-weight:700;color:#2c3e50;font-size:14px;">
+            {label} ({date_str[5:]} {weekday})
+          </div>
+          <div style="font-size:36px;margin:8px 0;">{icon}</div>
+          <div style="color:#555;font-size:13px;margin-bottom:8px;">{desc}</div>
+          <div style="font-size:15px;font-weight:700;color:#e74c3c;">
+            {t_max:.1f}°C
+          </div>
+          <div style="font-size:13px;color:#3498db;">{t_min:.1f}°C</div>
+          <div style="margin-top:8px;font-size:12px;color:#666;">
+            💧 {precip}% &nbsp; 💨 {wind:.1f}㎞/h
+          </div>
+        </div>"""
+
+    return f"""
+    <div style="background:#fff;border-radius:16px;padding:24px;margin-bottom:28px;
+                box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <h2 style="margin:0 0 6px;color:#2c3e50;font-size:18px;">{loc['label']}</h2>
+      <div style="color:#888;font-size:13px;margin-bottom:14px;">{loc['name']}</div>
+
+      <!-- 현재 날씨 -->
+      <div style="background:#eaf6ff;border-radius:10px;padding:12px 16px;
+                  margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:28px;">{cur_icon}</span>
+        <div>
+          <div style="font-size:22px;font-weight:700;color:#2c3e50;">
+            {current['temperature']:.1f}°C
+          </div>
+          <div style="font-size:13px;color:#555;">
+            현재 · {cur_desc} · 풍속 {current['windspeed']:.1f}㎞/h
+          </div>
         </div>
-    </body>
-    </html>
-    """
-    
-    return html_content
+      </div>
 
-def send_email(html_content):
-    """이메일 발송"""
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f'🌤️ {LOCATION_NAME} 3일 날씨 예보 - {datetime.now().strftime("%m/%d")}'
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = RECEIVER_EMAIL
-        
-        html_part = MIMEText(html_content, 'html', 'utf-8')
-        msg.attach(html_part)
-        
-        # Gmail SMTP 서버 사용
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.send_message(msg)
-        
-        print("이메일 발송 완료!")
-        
-    except Exception as e:
-        print(f"이메일 발송 실패: {e}")
+      <!-- 3일 예보 -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        {day_cards}
+      </div>
+    </div>"""
 
-if __name__ == '__main__':
-    # 이메일 설정 확인
-    if not all([SENDER_EMAIL, SENDER_PASSWORD, RECEIVER_EMAIL]):
-        print("Error: 이메일 설정이 필요합니다.")
-        exit(1)
-    
-    # 날씨 정보 가져오기
-    weather_data = get_weather_forecast()
-    
-    # 이메일 내용 생성
-    html_content = format_email_content(weather_data)
-    
-    # 이메일 발송
-    send_email(html_content)
+# ── 이메일 발송 ───────────────────────────────────────────
+def send_email():
+    now_str = datetime.now(KST).strftime("%Y년 %m월 %d일 %H:%M")
+
+    # 두 지점 카드 생성
+    cards_html = ""
+    for loc in LOCATIONS:
+        try:
+            cards_html += build_location_card(loc)
+        except Exception as e:
+            cards_html += f"""
+            <div style="background:#fff3cd;border-radius:12px;padding:16px;margin-bottom:20px;">
+              <b>{loc['label']}</b> 날씨 정보를 불러오지 못했습니다.<br>
+              <small style="color:#888;">{e}</small>
+            </div>"""
+
+    html = f"""
+    <html><body style="font-family:'Apple SD Gothic Neo',sans-serif;
+                       background:#f0f4f8;margin:0;padding:20px;">
+      <div style="max-width:600px;margin:0 auto;">
+
+        <!-- 헤더 -->
+        <div style="background:linear-gradient(135deg,#2980b9,#27ae60);
+                    border-radius:16px;padding:24px;color:#fff;
+                    text-align:center;margin-bottom:24px;">
+          <div style="font-size:28px;margin-bottom:6px;">🌤️ 오늘의 날씨 브리핑</div>
+          <div style="font-size:13px;opacity:0.85;">{now_str} 기준</div>
+        </div>
+
+        <!-- 지점 카드 -->
+        {cards_html}
+
+        <!-- 푸터 -->
+        <div style="text-align:center;color:#aaa;font-size:11px;margin-top:8px;">
+          Open-Meteo 제공 · GitHub Actions 자동 발송
+        </div>
+      </div>
+    </body></html>"""
+
+    msg = MIMEMultipart("alternative")
+    today_label = datetime.now(KST).strftime("%m/%d(%a)")
+    msg["Subject"] = f"🌤️ [{today_label}] 날씨 브리핑 — 양지면 · 우정읍"
+    msg["From"]    = SENDER_EMAIL
+    msg["To"]      = RECEIVER_EMAIL
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+        s.login(SENDER_EMAIL, SENDER_PASSWORD)
+        s.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, msg.as_string())
+
+    print(f"✅ 이메일 발송 완료: {now_str}")
+
+if __name__ == "__main__":
+    send_email()
