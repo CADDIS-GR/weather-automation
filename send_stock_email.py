@@ -11,6 +11,13 @@ import pytz
 KST = pytz.timezone('Asia/Seoul')
 today = datetime.now(KST)
 
+# GitHub schedule 이벤트(지연 크론) 중복 발송 방지 가드:
+# 피서(Pickle)가 평일 07:00 KST 정각에 workflow_dispatch로 발송하므로,
+# 깃허브 서버 큐 지연으로 뒤늦게 실행되는 schedule 이벤트는 발송을 건너뜁니다.
+if os.environ.get("GITHUB_EVENT_NAME") == "schedule":
+    print("⏭️ GitHub Actions 지연 스케줄(schedule) 감지: 07:00 정시 발송과 중복을 방지하기 위해 이메일 발송을 건너뜁니다.")
+    exit(0)
+
 # ─── 날짜 계산 (월요일이면 금요일 데이터) ───────────────────────────────────
 days_back = 3 if today.weekday() == 0 else 1
 target_date = today - timedelta(days=days_back)
