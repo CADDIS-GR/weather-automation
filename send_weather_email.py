@@ -1,5 +1,6 @@
 import requests
 import smtplib
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -44,7 +45,7 @@ def wmo_to_description(code):
     return mapping.get(code, ("알 수 없음", "❓"))
 
 # ── Open-Meteo API 호출 ───────────────────────────────────
-def fetch_weather(lat, lon):
+def fetch_weather(lat, lon, max_retries=3, timeout=20):
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude":  lat,
@@ -57,9 +58,18 @@ def fetch_weather(lat, lon):
         "timezone": "Asia/Seoul",
         "forecast_days": 3,
     }
-    r = requests.get(url, params=params, timeout=10)
-    r.raise_for_status()
-    return r.json()
+    last_err = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = requests.get(url, params=params, timeout=timeout)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            last_err = e
+            print(f"⚠️ Open-Meteo 호출 시도 {attempt}/{max_retries} 실패: {e}")
+            if attempt < max_retries:
+                time.sleep(2 * attempt)
+    raise last_err
 
 # ── 지점별 HTML 카드 생성 ─────────────────────────────────
 def build_location_card(loc):

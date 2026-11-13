@@ -1,4 +1,5 @@
 import requests
+import time
 from datetime import datetime
 
 # 날씨 정보 설정 (API 키 불필요!)
@@ -28,17 +29,23 @@ WEATHER_DESC = {
     95: '뇌우', 96: '뇌우', 99: '강한 뇌우'
 }
 
-def get_weather():
+def get_weather(max_retries=3, timeout=20):
     """Open-Meteo API로 날씨 정보 가져오기"""
     url = f'https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia/Seoul'
     
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"날씨 정보 가져오기 실패: {e}")
-        return None
+    last_err = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.get(url, timeout=timeout)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            last_err = e
+            print(f"⚠️ 날씨 정보 가져오기 시도 {attempt}/{max_retries} 실패: {e}")
+            if attempt < max_retries:
+                time.sleep(2 * attempt)
+    print(f"날씨 정보 가져오기 최종 실패: {last_err}")
+    return None
 
 def format_weather(data):
     """날씨 데이터를 README 형식으로 포맷팅"""
